@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+		<title>Popularity and Emotions by Genre</title>
+
+		<!-- Google fonts -->
+		<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,300" rel='stylesheet' type='text/css'>
+		<link href='https://fonts.googleapis.com/css?family=Raleway' rel='stylesheet' type='text/css'>
+		<link rel="stylesheet" href="style2.css">
+
+		<!-- D3.js -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
+		<script type="text/javascript" src="d3.js"></script>
+		<script src="radarChart.js"></script>
+		<script src="barChart.js"></script>
+
+		<style>
+			body {
+				font-family: 'Open Sans', sans-serif;
+				font-size: 11px;
+				font-weight: 300;
+				fill: #242424;
+				text-align: center;
+				cursor: default;
+			}
+			
+			.legend {
+				font-family: 'Raleway', sans-serif;
+				fill: #333333;
+			}
+			
+			.toolTip {
+				position: absolute;
+				display: none;
+				min-width: 80px;
+				height: auto;								
+				padding: 14px;
+				text-align: center;
+			}
+
+			#legend {
+                float:left;                
+				width:20%;
+                height:500px;
+            }
+            #chart1{
+                float:left; 
+                width:40%;
+                height:500px;
+            }
+            #chart2{
+                float:right;
+                width:40%;
+                height:500px;
+            }
+
+			#footer {
+				position:absolute;
+				bottom:0;
+				width:100%;
+				height:0px;   /* Height of the footer */
+			}
+
+		</style>
+	
+	</head>
+	<body>
+
+		<div class="wrapper">
+			<header>
+			   	<nav>
+					<div class="menu-icon">
+						<i class="fa fa-bars fa-2x"></i>
+					</div>
+					<div class="logo" height=30px width=30px><a href="#">
+						<img src="logo.jpg" alt="jpg" height=60px width=100px style="margin-left:40px;margin-top:10px;"/>
+					</a></div>
+					<div class="menu">
+						<ul>
+							<li><a href="index.html">Home</a></li>
+							<li><a href="about.html">About</a></li>
+							<li><a href="#">Visualization #1</a></li>
+							<li><a href="viz2.html">Visualization #2</a></li>
+							<li><a href="viz3.html">Visualization #3</a></li>
+						
+						</ul>
+					</div>
+				</nav>
+			</header>
+		</div>
+		<h1 style="margin:auto; margin-top:30px;margin-bottom:50px;text-align:center;"><b>Popularity and Emotions by Genre</b></h1>
+
+		<div id="legend"></div>
+		<div class="one" id="chart1"></div>
+		<div class="two" id="chart2"></div>
+		
+
+		<script>
+            
+			////////////////////////////////////////////////////////////// 
+			//////////////////////// Set-Up ////////////////////////////// 
+			////////////////////////////////////////////////////////////// 
+
+			var margin = {top: 100, right: 100, bottom: 100, left: 100},
+				width = Math.min(550, window.innerWidth - 10) - margin.left - margin.right,
+				height = Math.min(width, window.innerHeight - margin.top - margin.bottom - 20);
+
+			var h = 500, w = 300;
+
+			var svg = d3.select("#legend")
+						.append("svg")
+						.attr("width", "100%")
+						.attr("height", h)
+						.append("g")
+						.attr("style", "outline: thin solid gray;outline-offset:8px;")
+						.attr("transform", "translate(" + 0 + "," + 120 + ")");
+
+
+			var genres = ['Boy Band', 'Country', 'Electronic', 'Funk', 'Hip Hop', 
+							'House', 'Indie', 'Jazz', 'K-Pop', 'Latin', 
+							'Metal', 'OPM', 'Pop', 'R&B', 'Rap', 
+							'Reggae', 'Reggaeton', 'Rock', 'Trap', 'Other'],
+
+				colors = ["#909CF7", "#935116", "#F39C12", "#EE9A7D", "#AED6F1",
+							"#8E44AD", "#5B2C6F", "#F7DC6F", "#EC80DC", "#F12B2B",
+							"#5C5353", "#117A65", "#ABEBC6", "#45B39D", "#2471A3",
+							"#FF338A", "#C39BD3", "#A93226", "#9A7D0A", "#000000"];
+							
+
+
+			////////////////////////////////////////////////////////////// 
+			////////////////////// Radar Chart /////////////////////////// 
+			////////////////////////////////////////////////////////////// 
+
+			var boy_band = [
+						{axis:"Anger", value:0.1143},
+						{axis:"Anticipation", value:0.1547},
+						{axis:"Disgust", value:0.0733},
+						{axis:"Fear", value:0.1019},
+						{axis:"Joy", value:0.1542},
+						{axis:"Sadness", value:0.1302},
+						{axis:"Surprise", value:0.1080},
+						{axis:"Trust", value:0.1631}			
+					  ],
+				country = [
+						{axis:"Anger", value:0.0825},
+						{axis:"Anticipation", value:0.1761},
+						{axis:"Disgust", value:0.0613},
+						{axis:"Fear", value:0.1069},
+						{axis:"Joy", value:0.1899},
+						{axis:"Sadness", value:0.1501},
+						{axis:"Surprise", value:0.0867},
+						{axis:"Trust", value:0.1461}			
+					  ],
+				dance = [
+						{axis:"Anger", value:0.1083},
+						{axis:"Anticipation", value:0.1456},
+						{axis:"Disgust", value:0.0813},
+						{axis:"Fear", value:0.1331},
+						{axis:"Joy", value:0.1642},
+						{axis:"Sadness", value:0.1300},
+						{axis:"Surprise", value:0.0874},
+						{axis:"Trust", value:0.1498}			
+					  ],
+				funk = [
+						{axis:"Anger", value:0.0586},
+						{axis:"Anticipation", value:0.1550},
+						{axis:"Disgust", value:0.032},
+						{axis:"Fear", value:0.0944},
+						{axis:"Joy", value:0.2304},
+						{axis:"Sadness", value:0.1847},
+						{axis:"Surprise", value:0.1055},
+						{axis:"Trust", value:0.1392}			
+					  ],
+				hiphop = [
+						{axis:"Anger", value:0.1335},
+						{axis:"Anticipation", value:0.1463},
+						{axis:"Disgust", value:0.0891},
+						{axis:"Fear", value:0.1350},
+						{axis:"Joy", value:0.1418},
+						{axis:"Sadness", value:0.123},
+						{axis:"Surprise", value:0.0832},
+						{axis:"Trust", value:0.1478}			
+					],
+				house = [
+						{axis:"Anger", value:0.0991},
+						{axis:"Anticipation", value:0.1556},
+						{axis:"Disgust", value:0.0645},
+						{axis:"Fear", value:0.1247},
+						{axis:"Joy", value:0.1727},
+						{axis:"Sadness", value:0.1515},
+						{axis:"Surprise", value:0.0940},
+						{axis:"Trust", value:0.1377}			
+					  ],
+				indie = [
+						{axis:"Anger", value:0.1055},
+						{axis:"Anticipation", value:0.1504},
+						{axis:"Disgust", value:0.0714},
+						{axis:"Fear", value:0.134},
+						{axis:"Joy", value:0.1671},
+						{axis:"Sadness", value:0.1588},
+						{axis:"Surprise", value:0.0844},
+						{axis:"Trust", value:0.1284}			
+					],
+				jazz = [
+						{axis:"Anger", value:0.0166},
+						{axis:"Anticipation", value:0.2},
+						{axis:"Disgust", value:0.0166},
+						{axis:"Fear", value:0.066},
+						{axis:"Joy", value:0.366},
+						{axis:"Sadness", value:0.05},
+						{axis:"Surprise", value:0.033},
+						{axis:"Trust", value:0.25}			
+					],
+				kpop = [
+						{axis:"Anger", value:0.113},
+						{axis:"Anticipation", value:0.1515},
+						{axis:"Disgust", value:0.0698},
+						{axis:"Fear", value:0.1370},
+						{axis:"Joy", value:0.1653},
+						{axis:"Sadness", value:0.1177},
+						{axis:"Surprise", value:0.0950},
+						{axis:"Trust", value:0.1505}			
+					  ],
+				latin = [
+						{axis:"Anger", value:0.1276},
+						{axis:"Anticipation", value:0.1223},
+						{axis:"Disgust", value:0.0864},
+						{axis:"Fear", value:0.1517},
+						{axis:"Joy", value:0.173},
+						{axis:"Sadness", value:0.1086},
+						{axis:"Surprise", value:0.0814},
+						{axis:"Trust", value:0.1487}			
+					],
+				metal = [
+						{axis:"Anger", value:0.1336},
+						{axis:"Anticipation", value:0.1347},
+						{axis:"Disgust", value:0.0832},
+						{axis:"Fear", value:0.154},
+						{axis:"Joy", value:0.0996},
+						{axis:"Sadness", value:0.1748},
+						{axis:"Surprise", value:0.0947},
+						{axis:"Trust", value:0.1252}			
+					],
+				opm = [
+						{axis:"Anger", value:0.0743},
+						{axis:"Anticipation", value:0.1137},
+						{axis:"Disgust", value:0.0446},
+						{axis:"Fear", value:0.1415},
+						{axis:"Joy", value:0.2290},
+						{axis:"Sadness", value:0.1394},
+						{axis:"Surprise", value:0.091},
+						{axis:"Trust", value:0.1664}			
+					  ],
+				pop = [
+						{axis:"Anger", value:0.1055},
+						{axis:"Anticipation", value:0.1542},
+						{axis:"Disgust", value:0.0765},
+						{axis:"Fear", value:0.1181},
+						{axis:"Joy", value:0.1786},
+						{axis:"Sadness", value:0.1268},
+						{axis:"Surprise", value:0.0905},
+						{axis:"Trust", value:0.1494}			
+					],
+				rb_soul = [
+						{axis:"Anger", value:0.0896},
+						{axis:"Anticipation", value:0.155},
+						{axis:"Disgust", value:0.0668},
+						{axis:"Fear", value:0.103},
+						{axis:"Joy", value:0.1844},
+						{axis:"Sadness", value:0.1458},
+						{axis:"Surprise", value:0.0937},
+						{axis:"Trust", value:0.1613}			
+					],
+				rap = [
+						{axis:"Anger", value:0.1507},
+						{axis:"Anticipation", value:0.1284},
+						{axis:"Disgust", value:0.102},
+						{axis:"Fear", value:0.1554},
+						{axis:"Joy", value:0.1299},
+						{axis:"Sadness", value:0.1301},
+						{axis:"Surprise", value:0.074},
+						{axis:"Trust", value:0.1294}			
+					],
+				reggae = [
+						{axis:"Anger", value:0.08},
+						{axis:"Anticipation", value:0.189},
+						{axis:"Disgust", value:0.0516},
+						{axis:"Fear", value:0.1104},
+						{axis:"Joy", value:0.181},
+						{axis:"Sadness", value:0.1227},
+						{axis:"Surprise", value:0.1074},
+						{axis:"Trust", value:0.1578}			
+					],
+				reggaeton = [
+						{axis:"Anger", value:0.063},
+						{axis:"Anticipation", value:0.1573},
+						{axis:"Disgust", value:0.0878},
+						{axis:"Fear", value:0.063},
+						{axis:"Joy", value:0.1551},
+						{axis:"Sadness", value:0.1002},
+						{axis:"Surprise", value:0.205},
+						{axis:"Trust", value:0.1687}			
+					],
+				rock = [
+						{axis:"Anger", value:0.1133},
+						{axis:"Anticipation", value:0.1587},
+						{axis:"Disgust", value:0.06877},
+						{axis:"Fear", value:0.1304},
+						{axis:"Joy", value:0.1691},
+						{axis:"Sadness", value:0.1303},
+						{axis:"Surprise", value:0.0807},
+						{axis:"Trust", value:0.1484}			
+					],
+				trap = [
+						{axis:"Anger", value:0.1505},
+						{axis:"Anticipation", value:0.1371},
+						{axis:"Disgust", value:0.074},
+						{axis:"Fear", value:0.1756},
+						{axis:"Joy", value:0.1167},
+						{axis:"Sadness", value:0.1102},
+						{axis:"Surprise", value:0.09},
+						{axis:"Trust", value:0.1458}			
+					],
+				other = [
+						{axis:"Anger", value:0.0864},
+						{axis:"Anticipation", value:0.1945},
+						{axis:"Disgust", value:0.0644},
+						{axis:"Fear", value:0.1164},
+						{axis:"Joy", value:0.1706},
+						{axis:"Sadness", value:0.114},
+						{axis:"Surprise", value:0.077},
+						{axis:"Trust", value:0.1766}			
+					  ];
+			
+
+		  	var radar_data = [boy_band, country, dance, funk, hiphop, 
+							  house, indie, jazz, kpop, latin, 
+							  metal, opm, pop, rb_soul, rap, 
+							  reggae, reggaeton, rock, trap, other],
+				
+			 	curr_radar_data = [jazz, pop, reggaeton],
+				curr_genres = ["Jazz", "Pop", "Reggaeton"]
+				radar_colors = ["#F7DC6F", "#ABEBC6", "#C39BD3"];
+
+			var color = d3.scaleOrdinal().domain(curr_genres).range(radar_colors);
+
+			var radarChartOptions = {
+			  w: width,
+			  h: height,
+			  margin: margin,
+			  maxValue: 0.2,
+			  levels: 5,
+			  roundStrokes: true,
+			  color: color
+			};
+
+
+			//Call function to draw the Radar chart
+			RadarChart("#chart1", curr_radar_data, radarChartOptions);
+
+			
+			////////////////////////////////////////////////////////////// 
+			//////////////////////// Bar Chart /////////////////////////// 
+			//////////////////////////////////////////////////////////////
+
+
+			var bar_data = [
+				{Genre: "Boy Band", Popularity: 4117.8143, color: "#909CF7"},
+				{Genre: "Country", Popularity: 2560.4868, color: "#935116"},
+				{Genre: "Electronic", Popularity: 6520.2034, color: "#F39C12"},
+				{Genre: "Funk", Popularity: 3263.8078, color: "#EE9A7D"},
+				{Genre: "Hip Hop", Popularity: 6558.6793, color: "#AED6F1"},
+				{Genre: "House", Popularity: 2560.4868, color: "#8E44AD"},
+				{Genre: "Indie", Popularity: 4299.2824, color: "#5B2C6F"},
+				{Genre: "Jazz", Popularity: 302.0667, color: "#F7DC6F"},
+				{Genre: "K-Pop", Popularity: 4211.3504, color: "#EC80DC"},
+				{Genre: "Latin", Popularity: 4299.2824, color: "#F12B2B"},
+				{Genre: "Metal", Popularity: 4299.2824, color: "#5C5353"},
+				{Genre: "OPM", Popularity: 12034.5926, color: "#117A65"},
+				{Genre: "Pop", Popularity: 7013.7480, color: "#ABEBC6"},
+				{Genre: "R&B", Popularity: 6641.5002, color: "#45B39D"},
+				{Genre: "Rap", Popularity: 6250.2830, color: "#2471A3"},
+				{Genre: "Reggae", Popularity: 2764.2290, color: "#FF338A"},
+				{Genre: "Reggaeton", Popularity: 22958.2429, color: "#C39BD3"},
+				{Genre: "Rock", Popularity: 3159.7759, color: "#A93226"},
+				{Genre: "Trap", Popularity: 3911.3661, color: "#9A7D0A"},
+				{Genre: "Other", Popularity: 2232.9371, color: "#000000"}
+			];
+
+			var curr_bar_data = [bar_data[7], bar_data[12], bar_data[16]];
+
+			//Call function to draw the Bar chart
+			BarChart("#chart2", curr_bar_data);
+
+
+			////////////////////////////////////////////////////////////// 
+			///////////////////////// Legend ///////////////////////////// 
+			//////////////////////////////////////////////////////////////
+			
+			var legend_colors = d3.scaleOrdinal().domain(genres).range(colors);
+
+			//Initiate Legend	
+			var legend = svg.append("g")
+								.attr("class", "legend")
+								.attr("height", 500)
+								.attr("width", 300)
+								.attr('transform', 'translate(-200,-50)');
+
+			var maxSelected=4;
+			var numOfSelected=3;
+			const Alert_Message = "You can't select more than 4 genres"
+	
+			//Create colour squares
+				legend.selectAll('rect')
+						.data(genres)
+						.enter()
+						.append("rect")
+						.attr("x", 330)
+						.attr("y", function(d, i){ return i * 20;})
+						.attr("width", 10)
+						.attr("height", 10)
+						.attr('selected', function(i,d){
+											if(d==7 || d==12 || d==16){ 
+												d3.select(this).attr("style", "outline: thin solid black;"); 
+												return true;}
+												else return false;})
+						.style("fill", function(d, i){ return legend_colors(i);})
+						.on('click', function(e, d) {
+							var selectedBool = (d3.select(this).attr('selected') == "true" );
+							console.log(selectedBool);
+							if(selectedBool){
+								numOfSelected--;
+								d3.select(this).attr("style", "outline:  0px solid black;")
+									.style("fill", legend_colors(d)).attr('selected', false);   
+								update_remove(e);
+							}
+							else{
+								if(numOfSelected >= maxSelected)
+								{
+									alert(Alert_Message);
+								}
+								else{
+								numOfSelected++
+								d3.select(this).attr("style", "outline: thin solid black;")
+									.style("fill", legend_colors(d)).attr('selected', true);
+								update_add(d);
+								}
+							}
+  						});
+			
+			//Create text next to squares
+				legend.selectAll('text')
+						.data(genres)
+						.enter()
+						.append("text")
+						.attr("x", 380)
+						.attr("y", function(d, i){ return i * 20 + 9;})
+						.attr("font-size", "11px")
+						.attr("fill", "#737373")
+						.text(function(d) {return d});
+
+			//x label
+				svg.append("text")
+					.attr("text-anchor", "end")
+					.attr("x", 240)
+					.attr("y", -70)
+					.text("Genre Index")
+					.style("font-size", 14)
+					.style("font-weight", "bold");
+
+
+			//add by index
+			function update_add(i){
+				curr_genres.push(genres[i]);
+				curr_radar_data.push(radar_data[i]);
+				radar_colors.push(colors[i]);
+				curr_bar_data.push(bar_data[i]);
+
+				var color = d3.scaleOrdinal()
+							.domain(curr_genres)
+							.range(radar_colors);
+
+				var radarChartOptions = {
+				w: width,
+				h: height,
+				margin: margin,
+				maxValue: 0.2,
+				levels: 5,
+				roundStrokes: true,
+				color: color
+				};
+
+				RadarChart("#chart1", curr_radar_data, radarChartOptions);
+				BarChart("#chart2", curr_bar_data);
+			}
+
+			//remove by value
+			function update_remove(g){
+				
+				for(var i = 0; i < curr_genres.length; i++){ 
+    
+					if (curr_genres[i] === g) { 
+						curr_genres.splice(i, 1);
+						curr_radar_data.splice(i, 1);
+						radar_colors.splice(i, 1);
+						curr_bar_data.splice(i, 1);
+					}
+
+				}
+
+				var color = d3.scaleOrdinal()
+							.domain(curr_genres)
+							.range(radar_colors);
+
+				var radarChartOptions = {
+				w: width,
+				h: height,
+				margin: margin,
+				maxValue: 0.2,
+				levels: 5,
+				roundStrokes: true,
+				color: color
+				};
+
+				RadarChart("#chart1", curr_radar_data, radarChartOptions);
+				BarChart("#chart2", curr_bar_data);
+
+			}
+
+		</script>
+	</body>
+
+	<div class="footer" id="footer">
+        <b>Viz Project 2021: Spotify</b> &copy; Amanda Magzal & Yelena Sichove
+    </div>
+
+</html>

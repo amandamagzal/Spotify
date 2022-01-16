@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html>
+    <head>
+
+        <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+
+        <!-- Google fonts -->
+		<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,300" rel='stylesheet' type='text/css'>
+		<link href='https://fonts.googleapis.com/css?family=Raleway' rel='stylesheet' type='text/css'>
+		<link rel="stylesheet" href="style2.css">
+
+        <script src="http://d3js.org/d3.v4.js"></script>
+        <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+        <script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+        <script src="boxplot.js"></script>
+
+		<style>
+			body {
+				font-family: 'Open Sans', sans-serif;
+				font-size: 11px;
+				font-weight: 300;
+				fill: #242424;
+				text-align: center;
+				cursor: default;
+			}
+
+            .legend {
+				font-family: 'Raleway', sans-serif;
+				fill: #333333;
+			}
+			
+            .toolTip {
+				position: absolute;
+				min-width: 80px;
+				height: auto;								
+				padding: 14px;
+				text-align: center;
+                background: white;
+                border: 2px solid black;
+                border-radius: 3px;
+                display: none;
+                opacity: 0.9;
+			}
+
+            #map{
+                width:50%;
+                height:350px;
+            }
+            #legend{
+                width:100%;
+                height:100px;
+                margin-bottom: 20px;
+                margin-top: 20px;
+            }
+            #chart2{
+                float:right;
+                margin-right: 10px;
+                width:45%;
+                height:400px;
+            }
+
+            #footer {
+				position:absolute;
+				bottom:0;
+				width:100%;
+				height:0px;   /* Height of the footer */
+			}
+
+		</style>
+    </head>
+
+    <body>
+
+        <div class="wrapper">
+			<header>
+			   	<nav>
+					<div class="menu-icon">
+						<i class="fa fa-bars fa-2x"></i>
+					</div>
+					<div class="logo" height=30px width=30px><a href="#">
+						<img src="logo.jpg" alt="jpg" height=60px width=100px style="margin-left:40px;margin-top:10px;"/>
+					</a></div>
+					<div class="menu">
+						<ul>
+							<li><a href="index.html">Home</a></li>
+                            <li><a href="about.html">About</a></li>
+							<li><a href="viz1.html">Visualization #1</a></li>
+							<li><a href="#">Visualization #2</a></li>
+                            <li><a href="viz3.html">Visualization #3</a></li>						
+						</ul>
+					</div>
+				</nav>
+			</header>
+		</div>
+		<h1 style="margin:auto; margin-top:30px;margin-bottom:40px;text-align:center;"><b>Popularity and Emotions by Country</b></h1>
+      
+        <div id="legend"></div>
+        <!-- <div class="one" id="chart1">  -->
+             <!-- Create an element where the map will take place -->
+            <svg id="map"></svg>
+         <!-- </div> -->
+		<div class="two" id="chart2"></div>  
+
+
+        <script>
+        ////////////////////////////////////////////////////
+        ////////////////////// Legend //////////////////////
+        ////////////////////////////////////////////////////
+        var h = 500, w = 300;
+
+        var svgL = d3.select("#legend")
+						.append("svg")
+						.attr("width", "100%")
+						.attr("height", h)
+						.append("g")
+						.attr("style", "outline: thin solid gray;outline-offset:8px;")
+						.attr("transform", "translate(" + 0 + "," + 0 + ")");
+
+        var genres = ['Boy Band', 'Country', 'Electronic', 'Funk', 'Hip Hop', 
+                        'House', 'Indie', 'Jazz', 'K-Pop', 'Latin', 
+                        'Metal', 'OPM', 'Pop', 'R&B', 'Rap', 
+                        'Reggae', 'Reggaeton', 'Rock', 'Trap', 'Other'],
+
+            colors = ["#909CF7", "#935116", "#F39C12", "#EE9A7D", "#AED6F1",
+                        "#8E44AD", "#5B2C6F", "#F7DC6F", "#EC80DC", "#F12B2B",
+                        "#5C5353", "#117A65", "#ABEBC6", "#45B39D", "#2471A3",
+                        "#FF338A", "#C39BD3", "#A93226", "#9A7D0A", "#000000"];
+                        
+        var legend_colors = d3.scaleOrdinal().domain(genres).range(colors);
+
+        //Initiate Legend	
+        var legend = svgL.append("g")
+                .attr("class", "legend")
+                .attr("height", 100)
+                .attr("width", "100%")
+                .attr('transform', 'translate(-50,-280)');
+
+        //Create colour squares
+        legend.selectAll('rect')
+                    .data(genres)
+                    .enter()
+                    .append("rect")
+                    .attr("y", function(d, i){ if(i<10) return 330; else return 350;})
+                    .attr("x", function(d, i){ if(i<10) return  i*140+180; else return (i-10)*140+180;})
+                    .attr("width", 10)
+                    .attr("height", 10)
+                    .style("fill", function(d, i){ return legend_colors(i);})
+               ;
+
+        //Create text next to squares
+        legend.selectAll('text')
+            .data(genres)
+            .enter()
+            .append("text")
+            .attr("y", function(d, i){ if(i<10) return 339; else return 359;})
+            .attr("x", function(d, i){ if(i<10) return  i*140+195; else return (i-10)*140+195;})
+            .attr("font-size", "11px")
+            .attr("fill", "#737373")
+            .text(function(d) {return d});
+
+
+        //label
+        svgL.append("text")
+            .attr("text-anchor", "end")
+            .attr("x", 800)
+            .attr("y", 30)
+            .text("Genre Index")
+            .style("font-size", 14)
+            .style("font-weight", "bold");
+
+
+
+        ////////////////////////////////////////////////////
+        ///////////////////// Map Data /////////////////////
+        ////////////////////////////////////////////////////
+
+        var map_data = [
+            {key: 'ARG', value: {country: 'Argentina', genre: 'Reggaeton', pop: 28466.1, color: '#C39BD3'}},
+            {key: 'AUS', value: {country: 'Australia', genre: 'Rap', pop: 9344.391, color: '#2471A3'}},
+            {key: 'AUT', value: {country: 'Austria', genre: 'Latin', pop: 11610.267, color: '#F12B2B'}},
+            {key: 'BEL', value: {country: 'Belgium', genre: 'Latin', pop: 13560.025, color: '#F12B2B'}},
+            {key: 'BRA', value: {country: 'Brazil', genre: 'Funk', pop: 15707.875, color: '#EE9A7D'}},
+            {key: 'CAN', value: {country: 'Canada', genre: 'Latin', pop: 9863.983, color: '#F12B2B'}},
+            {key: 'CHL', value: {country: 'Chile', genre: 'Funk', pop: 20962.125, color: '#EE9A7D'}},
+            {key: 'COL', value: {country: 'Colombia', genre: 'Reggaeton', pop: 30389.75, color: '#C39BD3'}},
+            {key: 'CRI', value: {country: 'Costa Rica', genre: 'Reggaeton', pop: 37437.35, color: '#C39BD3'}},
+            {key: 'DNK', value: {country: 'Denmark', genre: 'Latin', pop: 12595.175, color: '#F12B2B'}},
+            {key: 'ECU', value: {country: 'Ecuador', genre: 'Reggaeton', pop: 42274.45, color: '#C39BD3'}},
+            {key: 'FIN', value: {country: 'Finland', genre: 'Latin', pop: 7258.283, color: '#F12B2B'}},
+            {key: 'FRA', value: {country: 'France', genre: 'Latin', pop: 31311.95, color: '#F12B2B'}},
+            {key: 'DEU', value: {country: 'Germany', genre: 'Latin', pop: 16168.117, color: '#F12B2B'}},
+            {key: 'IDN', value: {country: 'Indonesia', genre: 'R&B', pop: 13622.093, color: '#45B39D'}},
+            {key: 'IRL', value: {country: 'Ireland', genre: 'K-Pop', pop: 13466.556, color: '#EC80DC'}},
+            {key: 'ITA', value: {country: 'Italy', genre: 'Latin', pop: 32298.413, color: '#F12B2B'}},
+            {key: 'MYS', value: {country: 'Malaysia', genre: 'Pop', pop: 10106.251, color: '#ABEBC6'}},
+            {key: 'MEX', value: {country: 'Mexico', genre: 'Latin', pop: 33860.492, color: '#F12B2B'}},
+            {key: 'NLD', value: {country: 'Netherlands', genre: 'Latin', pop: 15663.133, color: '#F12B2B'}},
+            {key: 'NZL', value: {country: 'New Zealand', genre: 'Country', pop: 10558.917, color: '#935116'}},
+            {key: 'NOR', value: {country: 'Norway', genre: 'Latin', pop: 9985.433, color: '#F12B2B'}},
+            {key: 'PER', value: {country: 'Peru', genre: 'Reggaeton', pop: 39627.8, color: '#C39BD3'}},
+            {key: 'PHL', value: {country: 'Philippines', genre: 'OPM', pop: 12996.176, color: '#117A65'}},
+            {key: 'POL', value: {country: 'Poland', genre: 'House', pop: 7579.035, color: '#8E44AD'}},
+            {key: 'PRT', value: {country: 'Portugal', genre: 'Latin', pop: 29516.85, color: '#F12B2B'}},
+            {key: 'SGP', value: {country: 'Singapore', genre: 'Pop', pop: 10291.327, color: '#ABEBC6'}},
+            {key: 'ESP', value: {country: 'Spain', genre: 'Reggaeton', pop: 39204.1, color: '#C39BD3'}},
+            {key: 'SWE', value: {country: 'Sweden', genre: 'Latin', pop: 10745.617, color: '#F12B2B'}},
+            {key: 'CHE', value: {country: 'Switzerland', genre: 'Latin', pop: 27114.93, color: '#F12B2B'}},
+            {key: 'TWN', value: {country: 'Taiwan', genre: 'Pop', pop: 5881.473, color: '#ABEBC6'}},
+            {key: 'TUR', value: {country: 'Turkey', genre: 'R&B', pop: 7986.388, color: '#45B39D'}},
+            {key: 'GBR', value: {country: 'UK', genre: 'K-Pop', pop: 8007.866, color: '#EC80DC'}},
+            {key: 'USA', value: {country: 'USA', genre: 'Latin', pop: 9317.15, color: '#F12B2B'}}
+        ];
+
+
+        ////////////////////////////////////////////////////
+        /////////////////// Boxplot Data ///////////////////
+        ////////////////////////////////////////////////////
+
+        var arg = [
+                {key: 'Anger', median: 0.111, q1: 0.0556, q3: 0.16, lower: -0.101, upper: 0.317},
+                {key: 'Anticipation', median: 0.138, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Joy', median: 0.16, q1: 0.1, q3: 0.222, lower: -0.0833, upper: 0.406},
+                {key: 'Trust', median: 0.143, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Fear', median: 0.12, q1: 0.0714, q3: 0.167, lower: -0.0714, upper: 0.310},
+                {key: 'Surprise', median: 0.0909, q1: 0.05, q3: 0.125, lower: -0.0625, upper: 0.238},
+                {key: 'Sadness', median: 0.118, q1: 0.0692, q3: 0.176, lower: -0.0918, upper: 0.337},
+                {key: 'Disgust', median: 0.0714, q1: 0, q3: 0.111, lower: -0.167, upper: 0.278}
+            ],
+            aus = [
+                {key: 'Anger', median: 0.114, q1: 0.0625, q3: 0.167, lower: -0.0938, upper: 0.323},
+                {key: 'Anticipation', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Joy', median: 0.148, q1: 0.0930, q3: 0.211, lower: -0.0834, upper: 0.387},
+                {key: 'Trust', median: 0.143, q1: 0.0909, q3: 0.195, lower: -0.0652, upper: 0.351},
+                {key: 'Fear', median: 0.125, q1: 0.0769, q3: 0.173, lower: -0.0665, upper: 0.316},
+                {key: 'Surprise', median: 0.0833, q1: 0.0435, q3: 0.12, lower: -0.0713, upper: 0.235},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.176, lower: -0.0861, upper: 0.334},
+                {key: 'Disgust', median: 0.0769, q1: 0, q3: 0.118, lower: -0.176, upper: 0.294}
+            ],
+            aut = [
+                {key: 'Anger', median: 0.117, q1: 0.0625, q3: 0.167, lower: -0.0938, upper: 0.323},
+                {key: 'Anticipation', median: 0.143, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Joy', median: 0.145, q1: 0.0909, q3: 0.211, lower: -0.0885, upper: 0.390},
+                {key: 'Trust', median: 0.138, q1: 0.0909, q3: 0.192, lower: -0.0612, upper: 0.344},
+                {key: 'Fear', median: 0.125, q1: 0.0769, q3: 0.176, lower: -0.0724, upper: 0.326},
+                {key: 'Surprise', median: 0.0833, q1: 0.0417, q3: 0.12, lower: -0.0758, upper: 0.237},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.181, lower: -0.0923, upper: 0.344},
+                {key: 'Disgust', median: 0.0769, q1: 0, q3: 0.118, lower: -0.176, upper: 0.294}
+            ],
+            bel = [
+                {key: 'Anger', median: 0.114, q1: 0.0625, q3: 0.167, lower: -0.0938, upper: 0.323},
+                {key: 'Anticipation', median: 0.143, q1: 0.0972, q3: 0.2, lower: -0.0569, upper: 0.354},
+                {key: 'Joy', median: 0.15, q1: 0.0938, q3: 0.214, lower: -0.0871, upper: 0.395},
+                {key: 'Trust', median: 0.143, q1: 0.0938, q3: 0.2, lower: -0.0656, upper: 0.359},
+                {key: 'Fear', median: 0.125, q1: 0.0714, q3: 0.172, lower: -0.08, upper: 0.324},
+                {key: 'Surprise', median: 0.0833, q1: 0.0417, q3: 0.12, lower: -0.0758, upper: 0.237},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.176, lower: -0.0861, upper: 0.344},
+                {key: 'Disgust', median: 0.0769, q1: 0, q3: 0.118, lower: -0.176, upper: 0.294}
+            ],
+            bra = [
+                {key: 'Anger', median: 0.115, q1: 0.064, q3: 0.167, lower: -0.0899, upper: 0.321},
+                {key: 'Anticipation', median: 0.143, q1: 0.1, q3: 0.192, lower: -0.0385, upper: 0.331},
+                {key: 'Joy', median: 0.154, q1: 0.0945, q3: 0.214, lower: -0.0852, upper: 0.394},
+                {key: 'Trust', median: 0.143, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Fear', median: 0.125, q1: 0.0769, q3: 0.169, lower: -0.0613, upper: 0.307},
+                {key: 'Surprise', median: 0.0882, q1: 0.0476, q3: 0.125, lower: -0.0685, upper: 0.241},
+                {key: 'Sadness', median: 0.118, q1: 0.0694, q3: 0.175, lower: -0.0891, upper: 0.333},
+                {key: 'Disgust', median: 0.0741, q1: 0, q3: 0.115, lower: -0.173, upper: 0.288}
+            ],
+            can = [
+                {key: 'Anger', median: 0.125, q1: 0.0714, q3: 0.169, lower: -0.0755, upper: 0.316},
+                {key: 'Anticipation', median: 0.138, q1: 0.0952, q3: 0.188, lower: -0.0432, upper: 0.326},
+                {key: 'Joy', median: 0.143, q1: 0.0938, q3: 0.2, lower: -0.0656, upper: 0.359},
+                {key: 'Trust', median: 0.143, q1: 0.0976, q3: 0.194, lower: -0.0478, upper: 0.34},
+                {key: 'Fear', median: 0.13, q1: 0.0833, q3: 0.174, lower: -0.0525, upper: 0.31},
+                {key: 'Surprise', median: 0.0816, q1: 0.0455, q3: 0.115, lower: -0.0594, upper: 0.22},
+                {key: 'Sadness', median: 0.12, q1: 0.0769, q3: 0.167, lower: -0.0577, upper: 0.301},
+                {key: 'Disgust', median: 0.0833, q1: 0.0370, q3: 0.12, lower: -0.0874, upper: 0.244}
+            ],
+            chl = [
+                {key: 'Anger', median: 0.105, q1: 0.05, q3: 0.155, lower: -0.108, upper: 0.313},
+                {key: 'Anticipation', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Joy', median: 0.163, q1: 0.1, q3: 0.231, lower: -0.0962, upper: 0.427},
+                {key: 'Trust', median: 0.143, q1: 0.1, q3: 0.205, lower: -0.0568, upper: 0.361},
+                {key: 'Fear', median: 0.118, q1: 0.0714, q3: 0.162, lower: -0.0647, upper: 0.298},
+                {key: 'Surprise', median: 0.0909, q1: 0.0455, q3: 0.125, lower: -0.0739, upper: 0.244},
+                {key: 'Sadness', median: 0.118, q1: 0.0667, q3: 0.176, lower: -0.098, upper: 0.341},
+                {key: 'Disgust', median: 0.0698, q1: 0, q3: 0.111, lower: -0.167, upper: 0.278}
+            ],
+            col = [
+                {key: 'Anger', median: 0.111, q1: 0.0588, q3: 0.161, lower: -0.0949, upper: 0.315},
+                {key: 'Anticipation', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Joy', median: 0.158, q1: 0.1, q3: 0.222, lower: -0.0833, upper: 0.406},
+                {key: 'Trust', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Fear', median: 0.12, q1: 0.0714, q3: 0.167, lower: -0.0714, upper: 0.31},
+                {key: 'Surprise', median: 0.0909, q1: 0.0504, q3: 0.125, lower: -0.0614, upper: 0.237},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.176, lower: -0.0861, upper: 0.344},
+                {key: 'Disgust', median: 0.0714, q1: 0, q3: 0.111, lower: -0.167, upper: 0.278}
+            ],
+            cri = [
+                {key: 'Anger', median: 0.115, q1: 0.0625, q3: 0.167, lower: -0.0938, upper: 0.323},
+                {key: 'Anticipation', median: 0.143, q1: 0.0968, q3: 0.194, lower: -0.0497, upper: 0.341},
+                {key: 'Joy', median: 0.147, q1: 0.0909, q3: 0.208, lower: -0.0852, upper: 0.384},
+                {key: 'Trust', median: 0.143, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Fear', median: 0.125, q1: 0.0769, q3: 0.172, lower: -0.0663, upper: 0.316},
+                {key: 'Surprise', median: 0.0833, q1: 0.0455, q3: 0.119, lower: -0.0649, upper: 0.229},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.179, lower: -0.0901, upper: 0.341},
+                {key: 'Disgust', median: 0.0746, q1: 0.0238, q3: 0.115, lower: -0.114, upper: 0.253}
+            ],
+            dnk = [
+                {key: 'Anger', median: 0.115, q1: 0.0667, q3: 0.167, lower: -0.0833, upper: 0.317},
+                {key: 'Anticipation', median: 0.143, q1: 0.0968, q3: 0.2, lower: -0.0581, upper: 0.355},
+                {key: 'Joy', median: 0.15, q1: 0.0968, q3: 0.214, lower: -0.0795, upper: 0.391},
+                {key: 'Trust', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Fear', median: 0.125, q1: 0.0769, q3: 0.172, lower: -0.0663, upper: 0.316},
+                {key: 'Surprise', median: 0.0833, q1: 0.0455, q3: 0.121, lower: -0.0682, upper: 0.235},
+                {key: 'Sadness', median: 0.121, q1: 0.0714, q3: 0.171, lower: -0.0786, upper: 0.321},
+                {key: 'Disgust', median: 0.0769, q1: 0, q3: 0.115, lower: -0.173, upper: 0.288}
+            ],
+            ecu = [
+                {key: 'Anger', median: 0.111, q1: 0.0526, q3: 0.158, lower: -0.105, upper: 0.316},
+                {key: 'Anticipation', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Joy', median: 0.163, q1: 0.1, q3: 0.222, lower: -0.0833, upper: 0.406},
+                {key: 'Trust', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Fear', median: 0.118, q1: 0.0714, q3: 0.158, lower: -0.0583, upper: 0.288},
+                {key: 'Surprise', median: 0.0909, q1: 0.0455, q3: 0.125, lower: -0.0739, upper: 0.244},
+                {key: 'Sadness', median: 0.118, q1: 0.0651, q3: 0.182, lower: -0.011, upper: 0.357},
+                {key: 'Disgust', median: 0.0714, q1: 0, q3: 0.111, lower: -0.167, upper: 0.278}
+            ],
+            fin = [
+                {key: 'Anger', median: 0.118, q1: 0.0625, q3: 0.167, lower: -0.0938, upper: 0.323},
+                {key: 'Anticipation', median: 0.143, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Joy', median: 0.143, q1: 0.0909, q3: 0.211, lower: -0.0885, upper: 0.39},
+                {key: 'Trust', median: 0.136, q1: 0.0909, q3: 0.19, lower: -0.0584, upper: 0.34},
+                {key: 'Fear', median: 0.128, q1: 0.0769, q3: 0.176, lower: -0.0724, upper: 0.326},
+                {key: 'Surprise', median: 0.0833, q1: 0.0455, q3: 0.12, lower: -0.0664, upper: 0.232},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.176, lower: -0.0861, upper: 0.334},
+                {key: 'Disgust', median: 0.08, q1: 0.0286, q3: 0.119, lower: -0.107, upper: 0.255}
+            ],
+            fra = [
+                {key: 'Anger', median: 0.115, q1: 0.0625, q3: 0.167, lower: -0.0938, upper: 0.323},
+                {key: 'Anticipation', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Joy', median: 0.15, q1: 0.0942, q3: 0.214, lower: -0.0859, upper: 0.394},
+                {key: 'Trust', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Fear', median: 0.125, q1: 0.0769, q3: 0.172, lower: -0.0652, upper: 0.314},
+                {key: 'Surprise', median: 0.0839, q1: 0.0476, q3: 0.125, lower: -0.0685, upper: 0.241},
+                {key: 'Sadness', median: 0.118, q1: 0.0698, q3: 0.167, lower: -0.0756, upper: 0.312},
+                {key: 'Disgust', median: 0.0741, q1: 0, q3: 0.111, lower: -0.167, upper: 0.278}
+            ],
+            deu = [
+                {key: 'Anger', median: 0.116, q1: 0.0625, q3: 0.167, lower: -0.0938, upper: 0.323},
+                {key: 'Anticipation', median: 0.143, q1: 0.0968, q3: 0.2, lower: -0.0581, upper: 0.355},
+                {key: 'Joy', median: 0.143, q1: 0.0909, q3: 0.214, lower: -0.0942, upper: 0.399},
+                {key: 'Trust', median: 0.139, q1: 0.0928, q3: 0.193, lower: -0.0577, upper: 0.344},
+                {key: 'Fear', median: 0.128, q1: 0.0769, q3: 0.174, lower: -0.0686, upper: 0.319},
+                {key: 'Surprise', median: 0.0833, q1: 0.0417, q3: 0.12, lower: -0.0758, upper: 0.237},
+                {key: 'Sadness', median: 0.121, q1: 0.0714, q3: 0.176, lower: -0.0861, upper: 0.334},
+                {key: 'Disgust', median: 0.0769, q1: 0, q3: 0.118, lower: -0.176, upper: 0.294}
+            ],
+            idn = [
+                {key: 'Anger', median: 0.111, q1: 0.0526, q3: 0.16, lower: -0.108, upper: 0.321},
+                {key: 'Anticipation', median: 0.143, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Joy', median: 0.154, q1: 0.0909, q3: 0.222, lower: -0.106, upper: 0.419},
+                {key: 'Trust', median: 0.133, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Fear', median: 0.125, q1: 0.0769, q3: 0.173, lower: -0.0669, upper: 0.317},
+                {key: 'Surprise', median: 0.087, q1: 0.0435, q3: 0.125, lower: -0.0788, upper: 0.247},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.183, lower: -0.0963, upper: 0.351},
+                {key: 'Disgust', median: 0.0714, q1: 0, q3: 0.111, lower: -0.167, upper: 0.278}
+            ],
+            irl = [
+                {key: 'Anger', median: 0.111, q1: 0.0556, q3: 0.158, lower: -0.0980, upper: 0.311},
+                {key: 'Anticipation', median: 0.143, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Joy', median: 0.154, q1: 0.1, q3: 0.222, lower: -0.0833, upper: 0.406},
+                {key: 'Trust', median: 0.143, q1: 0.0938, q3: 0.2, lower: -0.0656, upper: 0.359},
+                {key: 'Fear', median: 0.125, q1: 0.0714, q3: 0.172, lower: -0.08, upper: 0.324},
+                {key: 'Surprise', median: 0.0833, q1: 0.0455, q3: 0.125, lower: -0.0739, upper: 0.244},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.176, lower: -0.0861, upper: 0.334},
+                {key: 'Disgust', median: 0.0714, q1: 0, q3: 0.115, lower: -0.173, upper: 0.288}
+            ],
+            ita = [
+                {key: 'Anger', median: 0.118, q1: 0.0625, q3: 0.167, lower: -0.0938, upper: 0.323},
+                {key: 'Anticipation', median: 0.143, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Joy', median: 0.143, q1: 0.0909, q3: 0.214, lower: -0.0942, upper: 0.399},
+                {key: 'Trust', median: 0.141, q1: 0.0938, q3: 0.194, lower: -0.0559, upper: 0.343},
+                {key: 'Fear', median: 0.128, q1: 0.0769, q3: 0.174, lower: -0.0682, upper: 0.319},
+                {key: 'Surprise', median: 0.0818, q1: 0.0435, q3: 0.12, lower: -0.0713, upper: 0.235},
+                {key: 'Sadness', median: 0.125, q1: 0.0698, q3: 0.178, lower: -0.0922, upper: 0.34},
+                {key: 'Disgust', median: 0.0736, q1: 0, q3: 0.115, lower: -0.173, upper: 0.288}
+            ],
+            mys = [
+                {key: 'Anger', median: 0.111, q1: 0.0588, q3: 0.167, lower: -0.103, upper: 0.328},
+                {key: 'Anticipation', median: 0.143, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Joy', median: 0.154, q1: 0.0952, q3: 0.217, lower: -0.088, upper: 0.401},
+                {key: 'Trust', median: 0.137, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Fear', median: 0.125, q1: 0.0741, q3: 0.172, lower: -0.0734, upper: 0.32},
+                {key: 'Surprise', median: 0.0833, q1: 0.04, q3: 0.125, lower: -0.0875, upper: 0.252},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.182, lower: -0.0942, upper: 0.347},
+                {key: 'Disgust', median: 0.0727, q1: 0, q3: 0.115, lower: -0.173, upper: 0.288}
+            ],
+            mex = [
+                {key: 'Anger', median: 0.111, q1: 0.0526, q3: 0.158, lower: -0.105, upper: 0.316},
+                {key: 'Anticipation', median: 0.143, q1: 0.0952, q3: 0.2, lower: -0.0603, upper: 0.356},
+                {key: 'Joy', median: 0.158, q1: 0.1, q3: 0.222, lower: -0.0833, upper: 0.406},
+                {key: 'Trust', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Fear', median: 0.125, q1: 0.0714, q3: 0.167, lower: -0.0714, upper: 0.31},
+                {key: 'Surprise', median: 0.087, q1: 0.0444, q3: 0.125, lower: -0.0764, upper: 0.247},
+                {key: 'Sadness', median: 0.125, q1: 0.0667, q3: 0.176, lower: -0.098, upper: 0.341},
+                {key: 'Disgust', median: 0.0714, q1: 0, q3: 0.111, lower: -0.167, upper: 0.278}
+            ],
+            nld = [
+                {key: 'Anger', median: 0.115, q1: 0.0625, q3: 0.167, lower: -0.0938, upper: 0.323},
+                {key: 'Anticipation', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Joy', median: 0.152, q1: 0.1, q3: 0.214, lower: -0.0714, upper: 0.386},
+                {key: 'Trust', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Fear', median: 0.125, q1: 0.0741, q3: 0.171, lower: -0.072, upper: 0.317},
+                {key: 'Surprise', median: 0.0833, q1: 0.0444, q3: 0.119, lower: -0.0675, upper: 0.231},
+                {key: 'Sadness', median: 0.119, q1: 0.069, q3: 0.171, lower: -0.0847, upper: 0.325},
+                {key: 'Disgust', median: 0.0769, q1: 0, q3: 0.116, lower: -0.174, upper: 0.291}
+            ],
+            nzl = [
+                {key: 'Anger', median: 0.118, q1: 0.0667, q3: 0.167, lower: -0.0833, upper: 0.317},
+                {key: 'Anticipation', median: 0.143, q1: 0.0976, q3: 0.2, lower: -0.0561, upper: 0.354},
+                {key: 'Joy', median: 0.147, q1: 0.0927, q3: 0.211, lower: -0.0841, upper: 0.387},
+                {key: 'Trust', median: 0.143, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Fear', median: 0.125, q1: 0.0769, q3: 0.172, lower: -0.0663, upper: 0.316},
+                {key: 'Surprise', median: 0.0833, q1: 0.0455, q3: 0.12, lower: -0.0664, upper: 0.232},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.174, lower: -0.0823, upper: 0.328},
+                {key: 'Disgust', median: 0.0769, q1: 0.0222, q3: 0.118, lower: -0.121, upper: 0.261}
+            ],
+            nor = [
+                {key: 'Anger', median: 0.118, q1: 0.0625, q3: 0.167, lower: -0.0938, upper: 0.323},
+                {key: 'Anticipation', median: 0.141, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Joy', median: 0.143, q1: 0.093, q3: 0.209, lower: -0.0809, upper: 0.383},
+                {key: 'Trust', median: 0.143, q1: 0.0938, q3: 0.193, lower: -0.0546, upper: 0.341},
+                {key: 'Fear', median: 0.125, q1: 0.0754, q3: 0.172, lower: -0.0702, upper: 0.318},
+                {key: 'Surprise', median: 0.0833, q1: 0.0441, q3: 0.12, lower: -0.0699, upper: 0.234},
+                {key: 'Sadness', median: 0.125, q1: 0.0741, q3: 0.178, lower: -0.0815, upper: 0.333},
+                {key: 'Disgust', median: 0.0769, q1: 0, q3: 0.118, lower: -0.176, upper: 0.294}
+            ],
+            per = [
+                {key: 'Anger', median: 0.109, q1: 0.0526, q3: 0.158, lower: -0.105, upper: 0.316},
+                {key: 'Anticipation', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Joy', median: 0.167, q1: 0.1, q3: 0.231, lower: -0.0962, upper: 0.427},
+                {key: 'Trust', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Fear', median: 0.118, q1: 0.0741, q3: 0.16, lower: -0.0614, upper: 0.293},
+                {key: 'Surprise', median: 0.087, q1: 0.0449, q3: 0.125, lower: -0.0751, upper: 0.245},
+                {key: 'Sadness', median: 0.118, q1: 0.0667, q3: 0.18, lower: -0.104, upper: 0.351},
+                {key: 'Disgust', median: 0.0714, q1: 0, q3: 0.111, lower: -0.167, upper: 0.278}
+            ],
+            phl = [
+                {key: 'Anger', median: 0.105, q1: 0.0526, q3: 0.154, lower: -0.0992, upper: 0.306},
+                {key: 'Anticipation', median: 0.143, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Joy', median: 0.158, q1: 0.1, q3: 0.228, lower: -0.0922, upper: 0.42},
+                {key: 'Trust', median: 0.143, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Fear', median: 0.122, q1: 0.069, q3: 0.167, lower: -0.0775, upper: 0.313},
+                {key: 'Surprise', median: 0.087, q1: 0.0417, q3: 0.125, lower: -0.0833, upper: 0.25},
+                {key: 'Sadness', median: 0.125, q1: 0.0667, q3: 0.182, lower: -0.106, upper: 0.355},
+                {key: 'Disgust', median: 0.0714, q1: 0, q3: 0.111, lower: -0.167, upper: 0.278}
+            ],
+            pol = [
+                {key: 'Anger', median: 0.114, q1: 0.0588, q3: 0.161, lower: -0.0937, upper: 0.313},
+                {key: 'Anticipation', median: 0.143, q1: 0.0968, q3: 0.2, lower: -0.0581, upper: 0.355},
+                {key: 'Joy', median: 0.154, q1: 0.0952, q3: 0.214, lower: -0.0833, upper: 0.393},
+                {key: 'Trust', median: 0.14, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Fear', median: 0.125, q1: 0.0741, q3: 0.174, lower: -0.0757, upper: 0.324},
+                {key: 'Surprise', median: 0.0833, q1: 0.04, q3: 0.125, lower: -0.0875, upper: 0.252},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.182, lower: -0.0942, upper: 0.345},
+                {key: 'Disgust', median: 0.0714, q1: 0, q3: 0.115, lower: -0.173, upper: 0.288}
+            ],
+            prt = [
+                {key: 'Anger', median: 0.115, q1: 0.0625, q3: 0.167, lower: -0.0938, upper: 0.323},
+                {key: 'Anticipation', median: 0.143, q1: 0.0968, q3: 0.2, lower: -0.0581, upper: 0.355},
+                {key: 'Joy', median: 0.148, q1: 0.0909, q3: 0.211, lower: -0.0885, upper: 0.39},
+                {key: 'Trust', median: 0.143, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Fear', median: 0.125, q1: 0.0769, q3: 0.174, lower: -0.0686, upper: 0.319},
+                {key: 'Surprise', median: 0.0833, q1: 0.0435, q3: 0.12, lower: -0.0713, upper: 0.235},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.176, lower: -0.0861, upper: 0.334},
+                {key: 'Disgust', median: 0.0789, q1: 0, q3: 0.118, lower: -0.176, upper: 0.294}
+            ],
+            sgp = [
+                {key: 'Anger', median: 0.111, q1: 0.0556, q3: 0.167, lower: -0.111, upper: 0.333},
+                {key: 'Anticipation', median: 0.143, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Joy', median: 0.154, q1: 0.0952, q3: 0.222, lower: -0.0952, upper: 0.413},
+                {key: 'Trust', median: 0.138, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Fear', median: 0.125, q1: 0.0741, q3: 0.172, lower: -0.0734, upper: 0.32},
+                {key: 'Surprise', median: 0.0833, q1: 0.0417, q3: 0.121, lower: -0.0777, upper: 0.241},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.182, lower: -0.0942, upper: 0.347},
+                {key: 'Disgust', median: 0.0727, q1: 0, q3: 0.115, lower: -0.173, upper: 0.288}
+            ],
+            esp = [
+                {key: 'Anger', median: 0.111, q1: 0.0556, q3: 0.16, lower: -0.101, upper: 0.317},
+                {key: 'Anticipation', median: 0.143, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Joy', median: 0.156, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Trust', median: 0.138, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Fear', median: 0.12, q1: 0.0714, q3: 0.167, lower: -0.0714, upper: 0.31},
+                {key: 'Surprise', median: 0.0833, q1: 0.04, q3: 0.125, lower: -0.0875, upper: 0.252},
+                {key: 'Sadness', median: 0.122, q1: 0.069, q3: 0.176, lower: -0.0923, upper: 0.338},
+                {key: 'Disgust', median: 0.0769, q1: 0, q3: 0.115, lower: -0.173, upper: 0.288}
+            ],
+            swe = [
+                {key: 'Anger', median: 0.111, q1: 0.0588, q3: 0.167, lower: -0.103, upper: 0.328},
+                {key: 'Anticipation', median: 0.143, q1: 0.0968, q3: 0.2, lower: -0.0581, upper: 0.355},
+                {key: 'Joy', median: 0.152, q1: 0.0952, q3: 0.214, lower: -0.0833, upper: 0.393},
+                {key: 'Trust', median: 0.143, q1: 0.0926, q3: 0.2, lower: -0.0684, upper: 0.361},
+                {key: 'Fear', median: 0.125, q1: 0.0741, q3: 0.172, lower: -0.0734, upper: 0.32},
+                {key: 'Surprise', median: 0.0833, q1: 0.0417, q3: 0.121, lower: -0.0777, upper: 0.241},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.179, lower: -0.0893, upper: 0.339},
+                {key: 'Disgust', median: 0.0769, q1: 0, q3: 0.116, lower: -0.174, upper: 0.29}
+            ],
+            che = [
+                {key: 'Anger', median: 0.12, q1: 0.0667, q3: 0.167, lower: -0.0833, upper: 0.317},
+                {key: 'Anticipation', median: 0.139, q1: 0.0952, q3: 0.2, lower: -0.0619, upper: 0.357},
+                {key: 'Joy', median: 0.143, q1: 0.093, q3: 0.209, lower: -0.0816, upper: 0.384},
+                {key: 'Trust', median: 0.143, q1: 0.0938, q3: 0.19, lower: -0.0513, upper: 0.336},
+                {key: 'Fear', median: 0.129, q1: 0.0769, q3: 0.174, lower: -0.0686, upper: 0.319},
+                {key: 'Surprise', median: 0.0833, q1: 0.0443, q3: 0.118, lower: -0.0656, upper: 0.228},
+                {key: 'Sadness', median: 0.12, q1: 0.0714, q3: 0.176, lower: -0.085, upper: 0.332},
+                {key: 'Disgust', median: 0.08, q1: 0, q3: 0.118, lower: -0.176, upper: 0.294}
+            ],
+            twn = [
+                {key: 'Anger', median: 0.111, q1: 0.0556, q3: 0.158, lower: -0.098, upper: 0.311},
+                {key: 'Anticipation', median: 0.143, q1: 0.0972, q3: 0.2, lower: -0.0569, upper: 0.354},
+                {key: 'Joy', median: 0.154, q1: 0.0909, q3: 0.214, lower: -0.0942, upper: 0.399},
+                {key: 'Trust', median: 0.14, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Fear', median: 0.125, q1: 0.0769, q3: 0.174, lower: -0.0686, upper: 0.319},
+                {key: 'Surprise', median: 0.0833, q1: 0.0417, q3: 0.125, lower: -0.0833, upper: 0.25},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.182, lower: -0.0942, upper: 0.347},
+                {key: 'Disgust', median: 0.0714, q1: 0, q3: 0.114, lower: -0.171, upper: 0.286}
+            ],
+            tur = [
+                {key: 'Anger', median: 0.118, q1: 0.0714, q3: 0.167, lower: -0.0714, upper: 0.31},
+                {key: 'Anticipation', median: 0.136, q1: 0.0952, q3: 0.185, lower: -0.0397, upper: 0.32},
+                {key: 'Joy', median: 0.143, q1: 0.0909, q3: 0.206, lower: -0.0816, upper: 0.378},
+                {key: 'Trust', median: 0.133, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Fear', median: 0.125, q1: 0.0833, q3: 0.172, lower: -0.0503, upper: 0.306},
+                {key: 'Surprise', median: 0.0833, q1: 0.0417, q3: 0.12, lower: -0.0758, upper: 0.237},
+                {key: 'Sadness', median: 0.125, q1: 0.0714, q3: 0.182, lower: -0.0942, upper: 0.347},
+                {key: 'Disgust', median: 0.08, q1: 0.0282, q3: 0.118, lower: -0.106, upper: 0.252}
+            ],
+            phl = [
+                {key: 'Anger', median: 0.105, q1: 0.0526, q3: 0.154, lower: -0.0992, upper: 0.306},
+                {key: 'Anticipation', median: 0.143, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Joy', median: 0.158, q1: 0.1, q3: 0.228, lower: -0.0922, upper: 0.42},
+                {key: 'Trust', median: 0.143, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Fear', median: 0.122, q1: 0.069, q3: 0.167, lower: -0.0775, upper: 0.313},
+                {key: 'Surprise', median: 0.087, q1: 0.0417, q3: 0.125, lower: -0.0833, upper: 0.25},
+                {key: 'Sadness', median: 0.125, q1: 0.0667, q3: 0.182, lower: -0.106, upper: 0.355},
+                {key: 'Disgust', median: 0.0714, q1: 0, q3: 0.111, lower: -0.167, upper: 0.278}
+            ],
+            gbr = [
+                {key: 'Anger', median: 0.111, q1: 0.0588, q3: 0.161, lower: -0.0949, upper: 0.315},
+                {key: 'Anticipation', median: 0.143, q1: 0.1, q3: 0.2, lower: -0.05, upper: 0.35},
+                {key: 'Joy', median: 0.15, q1: 0.1, q3: 0.214, lower: -0.0714, upper: 0.386},
+                {key: 'Trust', median: 0.143, q1: 0.0968, q3: 0.2, lower: -0.0581, upper: 0.355},
+                {key: 'Fear', median: 0.125, q1: 0.0741, q3: 0.172, lower: -0.0734, upper: 0.32},
+                {key: 'Surprise', median: 0.0833, q1: 0.0469, q3: 0.125, lower: -0.0703, upper: 0.242},
+                {key: 'Sadness', median: 0.12, q1: 0.0714, q3: 0.172, lower: -0.08, upper: 0.324},
+                {key: 'Disgust', median: 0.0769, q1: 0, q3: 0.116, lower: -0.174, upper: 0.291}
+            ],
+            usa = [
+                {key: 'Anger', median: 0.125, q1: 0.0741, q3: 0.167, lower: -0.0648, upper: 0.306},
+                {key: 'Anticipation', median: 0.138, q1: 0.0968, q3: 0.188, lower: -0.0393, upper: 0.324},
+                {key: 'Joy', median: 0.143, q1: 0.0909, q3: 0.2, lower: -0.0727, upper: 0.364},
+                {key: 'Trust', median: 0.143, q1: 0.0976, q3: 0.191, lower: -0.0433, upper: 0.332},
+                {key: 'Fear', median: 0.131, q1: 0.0833, q3: 0.174, lower: -0.0525, upper: 0.31},
+                {key: 'Surprise', median: 0.0816, q1: 0.0465, q3: 0.118, lower: -0.0602, upper: 0.224},
+                {key: 'Sadness', median: 0.121, q1: 0.0769, q3: 0.167, lower: -0.0577, upper: 0.301},
+                {key: 'Disgust', median: 0.0833, q1: 0.0417, q3: 0.122, lower: -0.0783, upper: 0.242}
+            ],
+
+            boxplot_data = [
+                {key: 'ARG', value: arg}, 
+                {key: 'AUS', value: aus},
+                {key: 'AUT', value: aut},
+                {key: 'BEL', value: bel},
+                {key: 'BRA', value: bra},
+                {key: 'CAN', value: can},
+                {key: 'CHL', value: chl},
+                {key: 'COL', value: col},
+                {key: 'CRI', value: cri},
+                {key: 'DNK', value: dnk},
+                {key: 'ECU', value: ecu},
+                {key: 'FIN', value: fin},
+                {key: 'FRA', value: fra},
+                {key: 'DEU', value: deu},
+                {key: 'IDN', value: idn},
+                {key: 'IRL', value: irl},
+                {key: 'ITA', value: ita},
+                {key: 'MYS', value: mys},
+                {key: 'MEX', value: mex},
+                {key: 'NLD', value: nld},
+                {key: 'NZL', value: nzl},
+                {key: 'NOR', value: nor},
+                {key: 'PER', value: per},
+                {key: 'PHL', value: phl},
+                {key: 'POL', value: pol},
+                {key: 'PRT', value: prt},
+                {key: 'SGP', value: sgp},
+                {key: 'ESP', value: esp},
+                {key: 'SWE', value: swe},
+                {key: 'CHE', value: che},
+                {key: 'TWN', value: twn},
+                {key: 'TUR', value: tur},
+                {key: 'GBR', value: gbr},
+                {key: 'USA', value: usa}
+            ];
+
+
+
+        ////////////////////////////////////////////////////
+        //////////////////////// Map ///////////////////////
+        ////////////////////////////////////////////////////
+
+
+        // The svg
+        var svg = d3.select("#map"),
+                width = +svg.attr("width"),
+                height = +svg.attr("height");
+
+        var minZoom=50;
+        var maxZoom=120;
+        
+        // Map and projection
+        var path = d3.geoPath();
+        var projection = d3.geoMercator()
+                            .scale(90)
+                            .center([0,0])
+                            .translate([300, 170]);
+
+        // Data
+        var data = d3.map();
+
+        // Load external data and boot
+        d3.queue()
+                .defer(d3.json, "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
+                .defer(d3.csv, "https://raw.githubusercontent.com/amandamagzal/data/main/mapData.csv", function(d) {data.set(d.country, +d.genre, +d.pop); })
+                .await(ready);
+
+        function ready(error, topo) {
+            let mouseOver = function(d,i) {
+                d3.selectAll(".Country")
+                    .transition()
+                    .duration(200)
+                    .style("opacity", .5)
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .style("opacity", 1)
+                    .style("stroke", "black")
+            }
+
+            let mouseLeave = function(d) {
+                d3.selectAll(".Country")
+                    .transition()
+                    .duration(200)
+                    .style("opacity", .8)
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .style("stroke", "transparent")
+            }
+
+            var tooltip1 = d3.select("body").append("div").attr("class", "toolTip").attr("id", "toolTip1");
+           
+            function getColor(id) {
+                var res = [];
+                map_data.forEach(element => {
+                    if(element.key == id){
+                        var x = element.value;
+                        res.push(x.color);
+                    }
+                });
+                return res;
+            };
+
+            function getText(id){
+                var res = [];
+                map_data.forEach(element => {
+                    if(element.key == id){
+                        var x = element.value;
+                        var str = "Country: " + x.country + "<br\> Genre: " + x.genre + "<br\> Popularity Score: " + x.pop;
+                        res.push(str);
+                    }
+                }); 
+                return res;
+            };
+
+
+            // Draw the map
+            svg.append("g")
+                .selectAll("path")
+                .data(topo.features)
+                .enter()
+                .append("path")
+            
+                // draw each country
+                .attr("d", d3.geoPath()
+                .projection(projection)
+                )
+            
+                // set the color of each country
+                .attr("fill", function (d) {return getColor(d.id);})
+                .style("stroke", "transparent")
+                .attr("class", function(d){ return "Country" } )
+                .style("opacity", .8)
+                .on("mouseover", mouseOver )
+                .on("mouseleave", mouseLeave )
+                .on("mousemove", function(d){
+                    tooltip1
+                    .style("left", d3.event.pageX - 50 + "px")
+                    .style("top", d3.event.pageY - 100 + "px")
+                    .style("display", "inline-block")
+                    .html(getText(d.id));
+                })
+                .on("mouseout", function(d){ tooltip1.style("display", "none");})
+                .on('click', function(d) {
+                    update_boxplot(d.id);
+                });
+        }
+        
+
+
+        ////////////////////////////////////////////////////
+        ////////////////////// Boxplot /////////////////////
+        ////////////////////////////////////////////////////
+
+        BoxPlot("#chart2", usa);
+
+        function update_boxplot(id){
+            boxplot_data.forEach(element => {
+                if(element.key == id){
+                    BoxPlot("#chart2", element.value);
+                }
+            });
+        }
+        </script>
+    </body>
+
+    <div class="footer" id="footer">
+        <b>Viz Project 2021: Spotify</b> &copy; Amanda Magzal & Yelena Sichove
+    </div>
+
+</html>

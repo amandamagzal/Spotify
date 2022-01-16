@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+		<title>Recommendations by Emotion</title>
+
+		<!-- Google fonts -->
+		<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,300" rel='stylesheet' type='text/css'>
+		<link href='https://fonts.googleapis.com/css?family=Raleway' rel='stylesheet' type='text/css'>
+		<link rel="stylesheet" href="style2.css">
+
+		<!-- D3.js -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
+		<script type="text/javascript" src="d3.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/holtzy/D3-graph-gallery@master/LIB/d3.layout.cloud.js"></script>
+        <script src="wordCloud.js"></script>
+
+		<style>
+			body {
+				font-family: 'Open Sans', sans-serif;
+				font-size: 11px;
+				font-weight: 300;
+				fill: #242424;
+				text-align: center;
+				cursor: default;
+			}
+            
+            .toolTip {
+				position: absolute;
+				min-width: 80px;
+				height: auto;								
+				padding: 14px;
+				text-align: center;
+                background: white;
+                border: 2px solid black;
+                border-radius: 3px;
+                opacity: 0.9;
+                display: none;
+			}
+
+            #combobox {
+                float:left;                
+				width:20%;
+                height:300px;
+                font-size: 16px;
+            }
+            #selectCombo {
+                margin-top: 300px;
+                margin-left: 10px;
+            }
+            #wordcloud{
+                float:left;
+                width:60%;
+                height:600px;
+            }
+            #legend {
+                float:left;                
+				width:20%;
+                height:600px;
+            }
+            
+
+            #footer {
+				position:absolute;
+				bottom:0;
+				width:100%;
+				height:0px;   /* Height of the footer */
+			}
+
+		</style>
+	
+	</head>
+	<body>
+
+		<div class="wrapper">
+			<header>
+			   	<nav>
+					<div class="menu-icon">
+						<i class="fa fa-bars fa-2x"></i>
+					</div>
+					<div class="logo" height=30px width=30px><a href="#">
+						<img src="logo.jpg" alt="jpg" height=60px width=100px style="margin-left:40px;margin-top:10px;"/>
+					</a></div>
+					<div class="menu">
+						<ul>
+							<li><a href="index.html">Home</a></li>
+                            <li><a href="about.html">About</a></li>
+							<li><a href="viz1.html">Visualization #1</a></li>
+							<li><a href="viz2.html">Visualization #2</a></li>
+                            <li><a href="#">Visualization #3</a></li>
+						
+						</ul>
+					</div>
+				</nav>
+			</header>
+		</div>
+		<h1 style="margin:auto; margin-top:30px;margin-bottom:50px;text-align:center;"><b>Recommendations by Emotion</b></h1>
+        
+        <div id='combobox'></div>
+        <div id="wordcloud"></div>
+		<div id="legend"></div>
+
+		<script>
+
+
+			////////////////////////////////////////////////////////////// 
+			//////////////////////// Set-Up ////////////////////////////// 
+			////////////////////////////////////////////////////////////// 
+
+			var margin = {top: 100, right: 100, bottom: 100, left: 100},
+				width = Math.min(550, window.innerWidth - 10) - margin.left - margin.right,
+				height = Math.min(width, window.innerHeight - margin.top - margin.bottom - 20);
+
+			var h = 500, w = 300;
+
+			var svg = d3.select("#legend")
+						.append("svg")
+						.attr("width", "100%")
+						.attr("height", h)
+						.append("g")
+						.attr("style", "outline: thin solid gray;outline-offset:8px;")
+						.attr("transform", "translate(" + 0 + "," + 120 + ")");
+
+
+			var genres = ['Boy Band', 'Country', 'Electronic', 'Funk', 'Hip Hop', 
+							'House', 'Indie', 'Jazz', 'K-Pop', 'Latin', 
+							'Metal', 'OPM', 'Pop', 'R&B', 'Rap', 
+							'Reggae', 'Reggaeton', 'Rock', 'Trap', 'Other'],
+
+				colors = ["#909CF7", "#935116", "#F39C12", "#EE9A7D", "#AED6F1",
+							"#8E44AD", "#5B2C6F", "#F7DC6F", "#EC80DC", "#F12B2B",
+							"#5C5353", "#117A65", "#ABEBC6", "#45B39D", "#2471A3",
+							"#FF338A", "#C39BD3", "#A93226", "#9A7D0A", "#000000"];
+
+
+
+
+            ////////////////////////////////////////////////////////////// 
+			////////////////////// Word Cloud //////////////////////////// 
+			////////////////////////////////////////////////////////////// 
+
+
+
+            // List of words
+            var anger = [
+                        {word: "salt and the sea", size: "80", artist: "The Lumineers", genre: "K-Pop", color: "#EC80DC", uri: "https://open.spotify.com/track/6d2MCbByfqhU85Fmj8WCAN"}, 
+                        {word: "breaking me", size: "75", artist: "	Topic - A7S", genre: "Electronic", color: "#F39C12", uri: "https://open.spotify.com/track/3H7ihDc1dqLriiWXwsc2po"}, 
+                        {word: "wavey", size: "70", artist: "CLiQ - Alika", genre: "House", color: "#8E44AD", uri: "https://open.spotify.com/track/5KvRFKrsapVHYNzoM7rDUw"}, 
+                        {word: "wavey", size: "65", artist: "Momi - Kevin", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/0CH8nEx9WaxfpW74z1cqRe"}, 
+                        {word: "d4l", size: "60", artist: "Future - Drake - Young Thug", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/5fHrHoJKfCgBd35zwIBmUK"}, 
+                        {word: "yeah i know", size: "55", artist: "The 1975", genre: "Rock", color: "#A93226", uri: "https://open.spotify.com/track/0DAlu6pQ0aNsMZfzENqeoi"},
+                        {word: "cool me down", size: "50", artist: "The Black Seeds", genre: "Rock", color: "#A93226", uri: "https://open.spotify.com/track/2L6SYAMCVP5RTy1AWYAI82"},
+                        {word: "wheels on the bus", size: "45", artist: "Melanie Martinez", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/2plUcsOZm6pi1kFUncqLni"},
+                        {word: "up in the clouds", size: "40", artist: "Skegss", genre: "Other", color: "#000000", uri: "https://open.spotify.com/track/14jL8sDvHq13jE4YcMknyf"},
+                        {word: "place we were made", size: "35", artist: "Maisie Peters", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/0xKGPkn1RLsVifjDs4183v"},
+                        {word: "sad tonight", size: "30", artist: "Chelsea Cutler", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/1X8mgsS7R6lcKLjDPeQWum"},
+                        {word: "left hand free", size: "25", artist: "alt-J", genre: "Rock", color: "#A93226", uri: "https://open.spotify.com/track/4iEOVEULZRvmzYSZY2ViKN"},
+                        {word: "wide open road", size: "20", artist: "The Triffids", genre: "Rock", color: "#A93226", uri: "https://open.spotify.com/track/1bdlSRsfxwDQ8H9TUQ81BJ"},
+                        {word: "standing in the way of control", size: "15", artist: "Gossip", genre: "Electronic", color: "#F39C12", uri: "https://open.spotify.com/track/2WoZsxEDAqtoPJ3B7jcc1g"},
+                        {word: "take care of you", size: "10", artist: "Ella Henderson", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/7GajHE5z66qqmzTrKVFCab"}
+                    ],
+                anticipation = [
+                        {word: "be mine", size: "80", artist: "Ofenbach", genre: "Indie", color: "#5B2C6F", uri: "https://open.spotify.com/track/2KklXplRtxMsBYo474Es0w"}, 
+                        {word: "do not disturb", size: "75", artist: "Drake", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/2KvHC9z14GSl4YpkNMX384"}, 
+                        {word: "do not disturb", size: "70", artist: "Ufo361", genre: "Rap", color: "#2471A3", uri: "https://open.spotify.com/track/4gc0hGrVOhDcQtbw3cjI98"}, 
+                        {word: "igors theme", size: "65", artist: "Tyler, The Creator", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/51RN0kzWd7xeR4th5HsEtW"}, 
+                        {word: "coast to coast", size: "60", artist: "NAV", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/3JtAkTDcbFJ3jqamRGtLj8"}, 
+                        {word: "do not disturb", size: "55", artist: "Smokepurpp - Murda Beatz - Lil Yachty - Offset", genre: "Rap", color: "#2471A3", uri: "https://open.spotify.com/track/3B3fVhuPlAlaIdpD1XOjUP"},
+                        {word: "hold out", size: "50", artist: "Sam Fender", genre: "Rock", color: "#A93226", uri: "https://open.spotify.com/track/4MBxiq9e0jpWxJikv4kJA4"},
+                        {word: "pure shores", size: "45", artist: "All Saints", genre: "Electronic", color: "#F39C12", uri: "https://open.spotify.com/track/6ZLGthToczpvnL5Eoy6yrY"},
+                        {word: "caught in the middle", size: "40", artist: "Paramore", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/27zJBz0YnuZO69U69z96vd"},
+                        {word: "my december", size: "35", artist: "Linkin Park", genre: "Metal", color: "#5C5353", uri: "https://open.spotify.com/track/0fxGA5lxrdYNYoE7yJxTNZ"},
+                        {word: "daydreaming", size: "30", artist: "Milky Chance - Tash Sultana", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/3VXvKTOQoY0kWvpjU67uq2"},
+                        {word: "naughty list", size: "25", artist: "Liam Payne - Dixie DeAmelio", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/2Y0ktCGrGoGcQFXsGztvhi"},
+                        {word: "the right song", size: "20", artist: "Tiesto - Oliver Heldens - Natalie La Rose", genre: "House", color: "#8E44AD", uri: "https://open.spotify.com/track/0fhZQ8rma6jpUljj0KfHGF"},
+                        {word: "do not disturb", size: "15", artist: "Smokepurpp - Murda Beatz - Lil Yachty - Offset", genre: "Rap", color: "#2471A3", uri: "https://open.spotify.com/track/6Ew9OKNC9uoL6xJSii8whk"},
+                        {word: "came here for love", size: "10", artist: "Sigala - Ella Eyre", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/3kGfazcbVvVkuZunzlLgTD"}
+                    ],
+                disgust = [
+                        {word: "born to be yours", size: "80", artist: "Kygo - Imagine Dragons", genre: "Electornic", color: "#F39C12", uri: "https://open.spotify.com/track/0kHyKhJMukHEPfeh8s7rdM"}, 
+                        {word: "samantha", size: "75", artist: "Dave - J Hus", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/4YLzVD32aMH4qgSsSPtNbl"}, 
+                        {word: "there you are", size: "70", artist: "ZAYN", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/155EsNGoXo7XSVF84oTPam"}, 
+                        {word: "samantha", size: "65", artist: "Jul - Hors Ligne - Ger - Moubarak - Norey Fz", genre: "Indie", color: "#5B2C6F", uri: "https://open.spotify.com/track/6Ge69h4yge4yWg0272miHy"}, 
+                        {word: "so high", size: "60", artist: "Mr. Vegas - Lizi - Walshy Fire", genre: "Other", color: "#000000", uri: "https://open.spotify.com/track/41Q5dO5UhYF7ufAZ9wbWHa"},
+                        {word: "so high", size: "55", artist: "MIST - Fredo", genre: "Electornic", color: "#F39C12", uri: "https://open.spotify.com/track/5aubXDnDNVKA5pS7EnR0mp"},
+                        {word: "so high", size: "50", artist: "Ruben", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/60bUT3XY15CTg8ZRNrSbqO"},
+                        {word: "so high", size: "45", artist: "Dancehall Word", genre: "Other", color: "#000000", uri: "https://open.spotify.com/track/0x19R6CBekfuwcCFqkTuq1"},
+                        {word: "so high", size: "40", artist: "SIX60", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/4LvjtzZEIRPzK7fPeW7KIu"},
+                        {word: "so high", size: "35", artist: "Ski Mask The Slump God", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/3nTDO6k4R6i3FpKx0QNgJ5"},
+                        {word: "complicated", size: "30", artist: "Alexander Oscar - SVEA", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/1BMfojwi8eKlVtGOEfJw17"},
+                        {word: "drink too much", size: "25", artist: "G Flip", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/0Kay5aNjJKULrS9TbpPZCW"},
+                        {word: "complicated", size: "20", artist: "Miss Li", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/14RLxOJGYs6BkLnvZYZisy"},
+                        {word: "complicated", size: "15", artist: "Dimitri Vegas & Like Mike - David Guetta - Dimitri Vegas - Kiiara", genre: "Electronic", color: "#F39C12", uri: "https://open.spotify.com/track/1Sl3njkhhz8nrSPZroDQ82"},
+                        {word: "so close", size: "10", artist: "NOTD - Felix Jaehn - Captain Cuts - Georgia Ku", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/7FjZU7XFs7P9jHI9Z0yRhK"}
+                    ],
+                fear = [
+                        {word: "psycho", size: "80", artist: "Red Velvet", genre: "K-Pop", color: "#EC80DC", uri: "https://open.spotify.com/track/3CYH422oy1cZNoo0GTG1TK"}, 
+                        {word: "psycho", size: "75", artist: "Post Malone - Ty Dolla $ign", genre: "Rap", color: "#2471A3", uri: "https://open.spotify.com/track/3swc6WTsr7rl9DqQKQA55C"}, 
+                        {word: "psycho", size: "70", artist: "Omar - Artigeardit", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/5dKHAZhVD7aHRqD0l0YNXi"}, 
+                        {word: "psycho", size: "65", artist: "Dave", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/0FWAIRd9Uz5uNek7cALYNC"}, 
+                        {word: "psycho", size: "60", artist: "Amy Shark - Mark Hoppus", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/0Fx1QKuK69vmaQgdwoNsJw"},
+                        {word: "psycho", size: "55", artist: "Kollegah - Farid Bang", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/5jTucmT3laryNOicpIK9qx"},
+                        {word: "cut my lip", size: "50", artist: "Twenty One Pilots", genre: "Rock", color: "#A93226", uri: "https://open.spotify.com/track/6gFtgkh8ShkrJn52Cbdhxy"},
+                        {word: "psycho", size: "45", artist: "Chris Abolade", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/5NWtozxJlIhBLvJsMzr20W"},
+                        {word: "kamikaze", size: "40", artist: "Eminem", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/2gsNpSn7VvvJuSrIDfRoYy"},
+                        {word: "kamikaze", size: "35", artist: "Lil Mosey", genre: "Rap", color: "#2471A3", uri: "https://open.spotify.com/track/1iPBD72u3nAyFEeardYuBV"},
+                        {word: "kamikaze", size: "30", artist: "WALK THE MOON", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/3YQ96qkxiEwTLwgu2Izcmq"},
+                        {word: "unsteady", size: "25", artist: "X Ambassadors", genre: "Rock", color: "#A93226", uri: "https://open.spotify.com/track/7lGKEWMXVWWTt3X71Bv44I"},
+                        {word: "caught in the fire", size: "20", artist: "Bazzi", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/29lG0RlQXa6Fms3DXs1TIT"},
+                        {word: "ruin my life", size: "15", artist: "Zara Larsson", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/5tAa8Uaqr4VvA3693mbIhU"},
+                        {word: "normal", size: "10", artist: "Morad", genre: "Trap", color: "#9A7D0A", uri: "https://open.spotify.com/track/4hCrQ5fZawXKSovXBXniEJ"}
+                    ],
+                joy = [
+                        {word: "in my mind", size: "80", artist: "Dynoro - Gigi D'Agostino", genre: "Electronic", color: "#F39C12", uri: "https://open.spotify.com/track/0E9ZjEAyAwOXZ7wJC0PD33"}, 
+                        {word: "i love you", size: "75", artist: "Ghali", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/7GOFNyZcCTwm1SsC5jOFpA"}, 
+                        {word: "changes", size: "70", artist: "XXXTENTACION", genre: "Rap", color: "#2471A3", uri: "https://open.spotify.com/track/7AFASza1mXqntmGtbxXprO"}, 
+                        {word: "changes", size: "65", artist: "Ilse DeLange", genre: "Other", color: "#000000", uri: "https://open.spotify.com/track/0koqWgFPqooMDME3pP07X1"}, 
+                        {word: "i love you", size: "60", artist: "Maejor - Greeicy", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/07Tnke5YAVjGhBx3lJ9oRS"},
+                        {word: "love on me", size: "55", artist: "Galantis - Hook N Sling", genre: "House", color: "#8E44AD", uri: "https://open.spotify.com/track/2MHCiOohBZEQuLgDTPvSzF"},
+                        {word: "i love you", size: "50", artist: "Billie Eilish", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/6CcJMwBtXByIz4zQLzFkKc"},
+                        {word: "i love you", size: "45", artist: "Axwell /\ Ingrosso - Kid Ink", genre: "House", color: "#8E44AD", uri: "https://open.spotify.com/track/11Fo4dAH31K7UZHGqCkCmE"},
+                        {word: "changes", size: "40", artist: "Lauv", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/029B34AzPVXzOQCyaJpkdH"},
+                        {word: "i love you", size: "35", artist: "EXID", genre: "K-Pop", color: "#EC80DC", uri: "https://open.spotify.com/track/7n2HVHWqFsyAOs5HqmE1Dl"},
+                        {word: "how deep is your love", size: "30", artist: "the bird and the bee", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/4bYqnqT92z9bi50a2tRsjj"},
+                        {word: "how deep is your love", size: "25", artist: "Bee Gees", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/2JoZzpdeP2G6Csfdq5aLXP"},
+                        {word: "changes", size: "20", artist: "Mike Perry - Dimitri Vangelis & Wyman - Ten Times - The Companions", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/0auKqMQXBTQ80h034wcsOA"},
+                        {word: "yellow", size: "15", artist: "Coldplay", genre: "Indie", color: "#5B2C6F", uri: "https://open.spotify.com/track/3AJwUDP919kvQ9QcozQPxg"},
+                        {word: "i love you", size: "10", artist: "TREASURE", genre: "K-Pop", color: "#EC80DC", uri: "https://open.spotify.com/track/4zazrdH47Bkgunb3riXVlJ"}
+                    ],
+                sadness = [
+                        {word: "feels", size: "80", artist: "Calvin Harris - Pharrell Williams - Katy Perry - Big Sean - Funk Wav", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/5bcTCxgc7xVfSaMV3RuVke"}, 
+                        {word: "i want it that way", size: "75", artist: "Backstreet Boys", genre: "Boy Band", color: "#909CF7", uri: "https://open.spotify.com/track/47BBI51FKFwOMlIiX6m8ya"}, 
+                        {word: "feels", size: "70", artist: "Ed Sheeran - Young Thug - J Hus", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/1Bdptrvb7nQkq8kCw3siE9"}, 
+                        {word: "in my room", size: "65", artist: "Frank Ocean", genre: "R&B", color: "#45B39D", uri: "https://open.spotify.com/track/4S4Mfvv03M1cHgIOJcbUCL"}, 
+                        {word: "feels", size: "60", artist: "Kehlani", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/4BOikd4oZjOYMde9AXfrTo"},
+                        {word: "all i can think about is you", size: "55", artist: "Coldplay", genre: "Indie", color: "#5B2C6F", uri: "https://open.spotify.com/track/4gDyoe1FImDlXVt58ssnMf"},
+                        {word: "are you gonna be my girl", size: "50", artist: "Jet", genre: "Rock", color: "#A93226", uri: "https://open.spotify.com/track/305WCRhhS10XUcH6AEwZk6"},
+                        {word: "favourite ex", size: "45", artist: "Maisie Peters", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/1a1SQeSqUKzH5OUVTEx4ae"},
+                        {word: "all the drinks", size: "40", artist: "Walking On Cars", genre: "Indie", color: "#5B2C6F", uri: "https://open.spotify.com/track/31Vqw9gocihSh9V8NEKdgM"},
+                        {word: "in my room", size: "35", artist: "Yellow Claw - Mustard - Ty Dolla $ign - Tyga", genre: "Rap", color: "#2471A3", uri: "https://open.spotify.com/track/4Jk6fZmX3gGYYbHnjq5uyN"},
+                        {word: "body like a back road", size: "30", artist: "Sam Hunt", genre: "Country", color: "#935116", uri: "https://open.spotify.com/track/7mldq42yDuxiUNn08nvzHO"},
+                        {word: "feel something", size: "25", artist: "Bea Miller", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/7JDWhC422Gtk1Bq0mL3OTC"},
+                        {word: "feel something", size: "20", artist: "Fatima Pinto - Mike Joseph", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/0BIHTu5MBTa73q5MsTwfIQ"},
+                        {word: "feel something", size: "15", artist: "Anevo - Kayla Diamond", genre: "Other", color: "#000000", uri: "https://open.spotify.com/track/5mmvdgjLgQPTGOUeqWt4Lw"},
+                        {word: "feel something", size: "10", artist: "ILLENIUM - Excision - I Prevail", genre: "Electronic", color: "#F39C12", uri: "https://open.spotify.com/track/5dAtKXyrQoQW054LZqJ5dP"}
+                    ],
+                surprise = [
+                        {word: "run", size: "80", artist: "LANY", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/0QXHHEi0rHMwmkxK5pvc05"}, 
+                        {word: "run", size: "75", artist: "Joji", genre: "R&B", color: "#45B39D", uri: "https://open.spotify.com/track/6p8eEdiZLKJH8tcjGZuNTK"}, 
+                        {word: "run", size: "70", artist: "Bugzy Malone - Rag'n'Bone Man", genre: "Electronic", color: "#F39C12", uri: "https://open.spotify.com/track/1e6y20DzpftrGToH2H3OYN"}, 
+                        {word: "temptation", size: "65", artist: "Joey Bada$$", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/7L9g4cPfohScjJ8mGwLQWr"}, 
+                        {word: "run", size: "60", artist: "Foo Fighters", genre: "Metal", color: "#5C5353", uri: "https://open.spotify.com/track/1wLQwg0mloy3yXjL0jPE0N"},
+                        {word: "temptation", size: "55", artist: "Future", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/2gXOzCwbVXACCaYRj4Qrep"},
+                        {word: "temptation", size: "50", artist: "Tiwa Savage - Sam Smith", genre: "Electronic", color: "#F39C12", uri: "https://open.spotify.com/track/31EkvbGV7cdXZgUt4gbtlK"},
+                        {word: "run", size: "45", artist: "OFFAIAH", genre: "House", color: "#8E44AD", uri: "https://open.spotify.com/track/2ppr7dG2Jyss2r9dzcvzqU"},
+                        {word: "here it goes again", size: "40", artist: "OK Go", genre: "Rock", color: "#A93226", uri: "https://open.spotify.com/track/1pHP4JeQV9wDx87D6qH9hD"},
+                        {word: "london town", size: "35", artist: "Branco - Gilli", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/5TKuvTO4jj4trnmMnqEpoJ"},
+                        {word: "summer air", size: "30", artist: "ItaloBrothers", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/0V9cosR5jWa4fr2koARmhD"},
+                        {word: "faded", size: "25", artist: "Alan Walker", genre: "House", color: "#8E44AD", uri: "https://open.spotify.com/track/7gHs73wELdeycvS48JfIos"},
+                        {word: "places", size: "20", artist: "Martin Solveig - Ina Wroldsen", genre: "House", color: "#8E44AD", uri: "https://open.spotify.com/track/6O85MfGECKBqAK2MgSbCaj"},
+                        {word: "you better run", size: "15", artist: "Liam Gallagher", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/76c0MTUA6LzZSyGuuhG4bp"},
+                        {word: "places", size: "10", artist: "Ulrikke", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/6ydk9O04ah7Fwny7rCwCUg"}
+                    ],
+                trust = [
+                        {word: "piece of your heart", size: "80", artist: "MEDUZA - Goodboys", genre: "Electronic", color: "#F39C12", uri: "https://open.spotify.com/track/1DFD5Fotzgn6yYXkYsKiGs"}, 
+                        {word: "living", size: "75", artist: "Bakermat - Alex Clare", genre: "House", color: "#8E44AD", uri: "https://open.spotify.com/track/63Qco1ncI5U4qEUnxL1DsH"}, 
+                        {word: "body talk", size: "70", artist: "Majid Jordan", genre: "R&B", color: "#45B39D", uri: "https://open.spotify.com/track/1fCz8XdLhSqUZoIpZjpg10"}, 
+                        {word: "i wont back down", size: "65", artist: "Tom Petty", genre: "Rock", color: "#A93226", uri: "https://open.spotify.com/track/7gSQv1OHpkIoAdUiRLdmI6"}, 
+                        {word: "one of my", size: "60", artist: "Future", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/12ZpiGAd2uPgJiofgoZMue"},
+                        {word: "puttin on the ritz", size: "55", artist: "Fred Astaire", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/7t3qBNw37k2P2OmgK0MilM"},
+                        {word: "die slow", size: "50", artist: "Lil Durk - 21 Savage", genre: "Trap", color: "#9A7D0A", uri: "https://open.spotify.com/track/3OIEEwH67H60B6HQLLaZFK"},
+                        {word: "if you wanna", size: "45", artist: "The Vaccines", genre: "Rock", color: "#A93226", uri: "https://open.spotify.com/track/0KNVDEeZWXZPIYKqJeRRpX"},
+                        {word: "outside", size: "40", artist: "Kartky - HVZX", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/4SDdeq8HUaKPUGiE4WMASH"},
+                        {word: "empty space", size: "35", artist: "James Arthur", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/1uru26I2JKd2mQZt0MDCUe"},
+                        {word: "outside", size: "30", artist: "D-Block Europe", genre: "Hip Hop", color: "#AED6F1", uri: "https://open.spotify.com/track/3rCOBAs3ZykwJlltmyD3nW"},
+                        {word: "outside", size: "25", artist: "Palm Trees - MdL - Abi F Jones", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/1w8bpps9WEVfwity4uSt9K"},
+                        {word: "outside", size: "20", artist: "Calvin Harris - Ellie Goulding", genre: "Pop", color: "#ABEBC6", uri: "https://open.spotify.com/track/7MmG8p0F9N3C4AXdK6o6Eb"},
+                        {word: "re-rewind", size: "15", artist: "Artful Dodger - Craig David", genre: "Other", color: "#000000", uri: "https://open.spotify.com/track/0VqSg7nsmUNJKHZYufNZFo"},
+                        {word: "outside", size: "10", artist: "George Michael", genre: "Rock", color: "#A93226", uri: "https://open.spotify.com/track/3sJZdXnP3zOByagpyztK90"}
+                    ],
+
+                emotionMap = {
+                    'Anger': anger,
+                    'Anticipation': anticipation,
+                    'Disgust': disgust,
+                    'Fear': fear,
+                    'Joy': joy,
+                    'Sadness': sadness,
+                    'Surprise': surprise,
+                    'Trust': trust
+                };
+
+            WordCloud("#wordcloud", anger);
+
+
+
+            ///////////////////////////////////////////
+            //////////////// Combo Box ////////////////
+            ///////////////////////////////////////////
+
+            var h = 500, w = 100;
+
+            d3.select("#combobox")
+            .append("text")
+                .attr("text-anchor", "end")
+                .attr("x", 200)
+                .attr("y", 0)
+                .text("Select Emotion:")
+                .style("font-size", 25)
+                .style("font-weight", "bold");
+            
+                // Handler for dropdown value change
+            var dropdownChange = function() {
+                var newEmotion = d3.select(this).property('value'),
+                    newData = emotionMap[newEmotion];
+
+                WordCloud("#wordcloud", newData);
+            };
+
+            // Get names of cereals, for dropdown
+            var emotions = Object.keys(emotionMap).sort();
+
+            var dropdown = d3.select("#combobox")
+                .insert("select", "svg")
+                .attr("id","selectCombo")
+                .on("change", dropdownChange);
+
+            dropdown.selectAll("option")
+                .data(emotions)
+                .enter()
+                .append("option")
+                .attr("value", function (d) { return d; })
+                .text(function (d) {
+                    return d[0].toUpperCase() + d.slice(1,d.length); // capitalize 1st letter
+                });
+
+            
+
+            ////////////////////////////////////////////////////////////// 
+			///////////////////////// Legend ///////////////////////////// 
+			//////////////////////////////////////////////////////////////
+			
+			var legend_colors = d3.scaleOrdinal().domain(genres).range(colors);
+
+            //Initiate Legend	
+            var legend = svg.append("g")
+                    .attr("class", "legend")
+                    .attr("height", 500)
+                    .attr("width", 300)
+                    .attr('transform', 'translate(-200,-50)');
+
+            //Create colour squares
+				legend.selectAll('rect')
+						.data(genres)
+						.enter()
+						.append("rect")
+						.attr("x", 330)
+						.attr("y", function(d, i){ return i * 20;})
+						.attr("width", 10)
+						.attr("height", 10)
+                        .style("fill", function(d, i){ return legend_colors(i);})
+
+
+            //Create text next to squares
+				legend.selectAll('text')
+						.data(genres)
+						.enter()
+						.append("text")
+						.attr("x", 380)
+						.attr("y", function(d, i){ return i * 20 + 9;})
+						.attr("font-size", "11px")
+						.attr("fill", "#737373")
+						.text(function(d) {return d});
+
+			//label
+				svg.append("text")
+					.attr("text-anchor", "end")
+					.attr("x", 240)
+					.attr("y", -70)
+					.text("Genre Index")
+					.style("font-size", 14)
+					.style("font-weight", "bold");
+            
+		
+
+		</script>
+	</body>
+	
+	<div class="footer" id="footer">
+        <b>Viz Project 2021: Spotify</b> &copy; Amanda Magzal & Yelena Sichove
+    </div>
+
+</html>
